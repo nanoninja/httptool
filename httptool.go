@@ -28,15 +28,17 @@ func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) error {
 	return f(w, r)
 }
 
+func recovery(w http.ResponseWriter, logger Logger) {
+	if err := recover(); err != nil {
+		logger.Printf("%v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
 // RecoveryHandler is an http.Handler that recovers from all panics.
 func RecoveryHandler(next http.Handler, logger Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				logger.Printf("%v", err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			}
-		}()
+		defer recovery(w, logger)
 
 		next.ServeHTTP(w, r)
 	})
